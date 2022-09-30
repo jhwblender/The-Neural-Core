@@ -9,10 +9,14 @@ import java.util.ArrayList;
 
 public class Main extends PApplet{
 
-    final static int[] dimensions = new int[]{9,8,8,8,8,7};
-    final float trainingMultiplier = 0.4f; //0.1
-    final float wiggleAdd = 0.01f; //0.01
-    //todo add multiplier for error difference punisher
+    final static int[] dimensions = new int[]{2,3,3,1}; //Network Size
+    final float trainingMultiplier = 0.1f; //0.1              //Multiplier for direction push
+    final float wiggleAdd = 0.001f; //0.01                   //surrounding test point distance
+    final float variationFactor = 0.05f;                     //drop of randomness
+    //todo add multiplier for variation penalty
+    //todo change color to show network error
+    //todo output variation
+    //todo output penalty
 
     Graphics graphics;
     static Network network;
@@ -39,6 +43,6 @@ public class Main extends PApplet{
     }
     public void draw() {
         graphics.draw();
-        training.train();
+        training.train(variationFactor);
     }
 }

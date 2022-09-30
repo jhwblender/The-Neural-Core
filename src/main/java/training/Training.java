@@ -6,14 +6,13 @@ public class Training {
 
     private float[][] getTraining(boolean inOut){
         if(!inOut)
-            return charRecognitionIn;
+            return xorIn;
         else
-            return charRecognitionOut;
+            return xorOut;
     }
 
     private final Network network;
     private final int[] dimensions;
-    private final float maxError;
     final float trainingMultiplier;
     final float wiggleAdd;
 
@@ -101,16 +100,20 @@ public class Training {
         this.wiggleAdd = wiggleAdd;
         this.network = network;
         dimensions = network.getLayerSizes();
-        maxError = getTraining(true).length * getTraining(true)[0].length;
     }
 
-    public void train(){
+    public void train(float variationFactor){
         float[] errorAndVariation = calculateError();
         float error = errorAndVariation[0];
-        float variation = errorAndVariation[1];
-        calculateSlope(error*variation);
-        network.descend(trainingMultiplier * (error/maxError));
-        System.out.println((int)(1000*(error/maxError))/10f+"%, Error, "+error);          ////////////
+        calculateSlope(getPenalty(errorAndVariation));
+        network.descend(trainingMultiplier * getPenalty(errorAndVariation), variationFactor);
+        System.out.println(100*error+"%");
+    }
+
+    private float getPenalty(float[] errorAndVariation){
+        //errorAndVariation[0] = Error
+        //errorAndVariation[1] = Variation
+        return (errorAndVariation[0]*0.5f + errorAndVariation[1]*0.5f);
     }
 
     private float[] calculateError(){
@@ -118,30 +121,29 @@ public class Training {
         float minError = Float.MAX_VALUE; //experimenting
         float maxError = 0; //experimenting
         float variation = 0; //experimenting
-        for(int set = 0; set < getTraining(false).length; set++){
+        int numSamples = getTraining(false).length;
+        for(int set = 0; set < numSamples; set++){
             network.feedForward(getTraining(false)[set]);
-            float[] errorAndVariation = network.getError(getTraining(true)[set]);
-            float error = errorAndVariation[0];
-            float nodeMaxError = errorAndVariation[1];
-            float nodeMinError = errorAndVariation[2];
-            minError = Math.min(Math.min(minError, error), nodeMinError);   //Experimenting
-            maxError = Math.max(Math.max(maxError, error), nodeMaxError);   //Experimenting
-            variation = maxError - minError;
-            errorSum += error;
+            float[] errorAndVariation = network.getErrorAndVariation(getTraining(true)[set]);
+            float error         = errorAndVariation[0];
+            float nodeVariation = errorAndVariation[1];
+            minError = Math.min(minError, error);   //Experimenting
+            maxError = Math.max(maxError, error);   //Experimenting
+            variation += (maxError - minError + nodeVariation)/2; //This 2 is okay because it's averaging 2 %s
+            errorSum  += error;
         }
-        return new float[]{errorSum, variation};// * (1 + (maxError-minError)); //multiplier experimental
+        return new float[]{errorSum/numSamples, variation/numSamples};// * (1 + (maxError-minError)); //multiplier experimental
     }
 
-    private void calculateSlope(float error){
+    private void calculateSlope(float baseError){
         for(int startLayer = 0; startLayer < dimensions.length - 1; startLayer++){
             int endLayer = startLayer+1;
             for(int endNode = 0; endNode < dimensions[endLayer]; endNode++){
                 for(int startNode = 0; startNode < dimensions[startLayer]; startNode++){                                //go through each start node
                     network.setWiggleWeight(startLayer, startNode, endNode, wiggleAdd);
-                    float[] errorAndVariation = calculateError();
-                    float wiggleError = errorAndVariation[0] * errorAndVariation[1];
+                    float wiggleError = getPenalty(calculateError());
                     network.wiggleReset(startLayer, startNode, endNode);
-                    float slope = (wiggleError - error)/ wiggleAdd;
+                    float slope = (wiggleError - baseError) / wiggleAdd;
                     network.setSlope(startLayer, startNode, endNode, slope);
                 }
             }

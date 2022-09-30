@@ -2,10 +2,13 @@ package network;
 
 public class Network {
 
+    final float activationMax = 1;
+    final float activationMin = 0;
     final int numLayers;
     int[] dimensions;
     WeightMaster weights;
     NodeMaster nodes;
+    float currentOverallError;
 
     public Network(int[] dimensions){
         this.dimensions = dimensions;
@@ -31,7 +34,7 @@ public class Network {
         }
     }
 
-    public float[] getError(float[] desired){
+    public float[] getErrorAndVariation(float[] desired){
         int lastLayer = numLayers-1;
         int lastLayerSize = dimensions[lastLayer];
         assert(desired.length == lastLayerSize);
@@ -45,15 +48,20 @@ public class Network {
             maxError = Math.max(maxError, error);   //Experimenting
             errorSum += error;
         }
-        return new float[]{errorSum, maxError, minError};// * (1 + (maxError-minError)); //multiplier experimental
+        errorSum /= activationMax - activationMin;
+        return new float[]{errorSum/lastLayerSize, (maxError - minError)/(activationMax - activationMin)};// returns % error and % variation
     }
 
+    //REMEMBER to change activationMax and activationMin
     private float activation(float x){
         return sigmoidActivation(x);
     }
 
-    private float sigmoidActivation(float x){
+    private float modifiedSigmoidActivation(float x){
         return (float)(2/(1+Math.pow(Math.E,-x))-1); //modified to be -1 to 1, with a .995 range by -2 to 2.
+    }
+    private float sigmoidActivation(float x){
+        return (float)(1/(1+Math.pow(Math.E,-x)));
     }
 
     public float getNodeValue(int layer, int node){
@@ -72,8 +80,8 @@ public class Network {
     public void setSlope(int layer, int startNode, int endNode, float value){
         weights.setSlope(layer, startNode, endNode, value);
     }
-    public void descend(float multiplier){
-        weights.descend(multiplier);
+    public void descend(float multiplier, float variationFactor){
+        weights.descend(multiplier, variationFactor);
     }
 
     public int getNumLayers(){

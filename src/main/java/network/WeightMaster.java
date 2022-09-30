@@ -37,12 +37,12 @@ public class WeightMaster {
         weights[layer][startNode][endNode].setSlope(value);
     }
 
-    public void descend(float multiplier){
+    public void descend(float multiplier, float variationFactor){
         for(int layerStart = 0; layerStart < numLayers - 1; layerStart++) {
             int layerEnd = layerStart + 1;
             for (int startNode = 0; startNode < dimensions[layerStart]; startNode++) {
                 for (int endNode = 0; endNode < dimensions[layerEnd]; endNode++) {
-                    weights[layerStart][startNode][endNode].descend(multiplier);
+                    weights[layerStart][startNode][endNode].descend(multiplier, variationFactor);
                 }
             }
         }
