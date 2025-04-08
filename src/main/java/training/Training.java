@@ -1,6 +1,7 @@
 package training;
 
 import network.Network;
+import main.Main;
 
 public class Training {
 
@@ -95,19 +96,19 @@ public class Training {
             {1,0,0,0,0,0,0}
     };
 
-    public Training(Network network, float trainingMultiplier, float wiggleAdd){
-        this.trainingMultiplier = trainingMultiplier;
-        this.wiggleAdd = wiggleAdd;
+    public Training(Network network){
+        this.trainingMultiplier = Main.trainingMultiplier;
+        this.wiggleAdd = Main.wiggleAdd;
         this.network = network;
         dimensions = network.getLayerSizes();
     }
 
-    public void train(float variationFactor){
+    public void train(){
         float[] errorAndVariation = calculateError();
         float error = errorAndVariation[0];
         calculateSlope(getPenalty(errorAndVariation));
-        network.descend(trainingMultiplier * getPenalty(errorAndVariation), variationFactor);
-        System.out.println(100*error+"%");
+        network.descend(trainingMultiplier * getPenalty(errorAndVariation), Main.variationFactor);
+        Main.graph.addValue(100*error);
     }
 
     private float getPenalty(float[] errorAndVariation){

@@ -25,8 +25,8 @@ public class Graphics implements Drawable{
 
     public void draw(){
         canvas.background(123,50,79);
-        for(int drawable = 0; drawable < drawables.size(); drawable++){
-            drawables.get(drawable).draw();
+        for (Drawable item : drawables) {
+            item.draw();
         }
     }
 
