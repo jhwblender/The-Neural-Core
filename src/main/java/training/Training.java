@@ -165,7 +165,7 @@ public class Training {
         if(lowerRegionError < upperRegionError){
             //Lower region wins
             maxWeights[targetWeightIndex] = targetMidWeight;
-            Main.graph.addValue(lowerRegionError);
+            Main.graph.addValue(100*lowerRegionError);
         }else{
             //Upper region wins
             minWeights[targetWeightIndex] = targetMidWeight;
