@@ -8,7 +8,6 @@ public class Network {
     int[] dimensions;
     WeightMaster weights, minWeights, maxWeights;
     NodeMaster nodes;
-    float currentOverallError;
 
     public Network(int[] dimensions){
         this.dimensions = dimensions;
@@ -20,12 +19,12 @@ public class Network {
         weights = new WeightMaster(dimensions, null);
     }
 
-    public void feedForward(float[] input){
+    public void feedForward(double[] input){
         nodes.setLayer(0, input);
         for(int startLayer = 0; startLayer < numLayers-1; startLayer++){
             int endLayer = startLayer+1;
             for(int endNode = 0; endNode < dimensions[endLayer]; endNode++){
-                float sum = 0;                                                                                          //reset sum
+                double sum = 0;                                                                                          //reset sum
                 for(int startNode = 0; startNode < dimensions[startLayer]; startNode++){                                //go through each start node
                     sum += nodes.getValue(startLayer, startNode) * weights.getWeight(startLayer, startNode, endNode);    //sum the start node value with the weight
                 }
@@ -34,42 +33,42 @@ public class Network {
         }
     }
 
-    public float[] getAvgAndMaxError(float[] desired){
+    public double[] getAvgAndMaxError(double[] desired){
         int lastLayer = numLayers-1;
         int lastLayerSize = dimensions[lastLayer];
         assert(desired.length == lastLayerSize);
 
-        float maxError = 0;
-        float errorSum = 0;
+        double maxError = 0;
+        double errorSum = 0;
         for(int node = 0; node < lastLayerSize; node++){
-            float error = Math.abs(desired[node] - getNodeValue(lastLayer, node));
-            maxError = Math.max(maxError, error);   //Experimenting
+            double error = Math.abs(desired[node] - getNodeValue(lastLayer, node));
+            maxError = Math.max(maxError, error);
             errorSum += error;
         }
-        float avgError = errorSum/lastLayerSize;
+        double avgError = errorSum/(double)lastLayerSize;
         //Get range for normalizing to %
-        float desiredDelta = Tools.getDelta(desired);
+        double desiredDelta = Tools.getDelta(desired);
         //Convert to %
-        avgError = avgError;///desiredDelta;
-        maxError = maxError;///desiredDelta;
+        avgError = avgError/desiredDelta;
+        maxError = maxError/desiredDelta;
 //        System.out.println("avgError: "+avgError+", maxError: "+maxError);
-        return new float[]{avgError, maxError};// returns % error and % variation
+        return new double[]{avgError, maxError};// returns % error and % variation
     }
 
-    private float activation(float x){
+    private double activation(double x){
         return modifiedSigmoidActivation(x);
     }
     //---------- Activation Functions ----------
-    private float modifiedSigmoidActivation(float x){
-        return (float)(2/(1+Math.pow(Math.E,-3*x))-1); //RANGE: y[-1, 1] with a .995 range x[-2, 2].
+    private double modifiedSigmoidActivation(double x){
+        return (double)(2/(1+Math.pow(Math.E,-3*x))-1); //RANGE: y[-1, 1] with a .995 range x[-2, 2].
     }
-    private float standardSigmoidActivation(float x){
-        return (float)(1/(1+Math.pow(Math.E,-x))); //RANGE: y[0, 1] with a .995 range x[-6, 6].
+    private double standardSigmoidActivation(double x){
+        return (double)(1/(1+Math.pow(Math.E,-x))); //RANGE: y[0, 1] with a .995 range x[-6, 6].
     }
     //--------------------------------------------
 
     //------------- Node Getters -------------------------
-    public float getNodeValue(int layer, int node){
+    public double getNodeValue(int layer, int node){
         return nodes.getValue(layer, node);
     }
     //-----------------------------------------------------
@@ -82,7 +81,7 @@ public class Network {
         return weights.getLinearWeights();
     }
 
-    public float getWeightValue(int layer, int startNode, int endNode) {
+    public double getWeightValue(int layer, int startNode, int endNode) {
         return weights.getWeight(layer, startNode, endNode);
     }
     //----------------------------------------------------

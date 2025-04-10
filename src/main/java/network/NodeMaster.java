@@ -20,18 +20,18 @@ public class NodeMaster {
         }
     }
 
-    public void setLayer(int layer, float[] values){
+    public void setLayer(int layer, double[] values){
         assert(values.length == nodes[layer].length);
         for(int node = 0; node < dimensions[layer]; node++){
             setValue(layer, node, values[node]);
         }
     }
 
-    public void setValue(int layer, int node, float value){
+    public void setValue(int layer, int node, double value){
         nodes[layer][node].setValue(value);
     }
 
-    public float getValue(int layer, int node){
+    public double getValue(int layer, int node){
         return nodes[layer][node].getValue();
     }
 }

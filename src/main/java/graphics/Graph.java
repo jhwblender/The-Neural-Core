@@ -8,9 +8,9 @@ import java.util.ArrayList;
 public class Graph implements Drawable{
 
     PApplet canvas;
-    ArrayList<Float> values;
-    float minY = Float.MAX_VALUE;
-    float maxY = 0;
+    ArrayList<Double> values;
+    double minY = Double.MAX_VALUE;
+    double maxY = 0;
 
     public Graph(){
         values = new ArrayList<>();
@@ -26,7 +26,7 @@ public class Graph implements Drawable{
         this.canvas = canvas;
     }
 
-    public void addValue(float value){
+    public void addValue(double value){
         values.add(value);
         if (value > maxY) {
             maxY = value;
@@ -47,17 +47,17 @@ public class Graph implements Drawable{
 
         //Draw Graph
         int lastX = 0;
-        float lastY = (1f - ((values.get(0) - minY) / (maxY - minY))) * canvas.height;;
+        double lastY = (1f - ((values.get(0) - minY) / (maxY - minY))) * canvas.height;;
 
         boolean drawEvery = values.size() <= canvas.width;
         int maxI = Math.min(values.size(), canvas.width);
 
         for(int i = 1; i < maxI; i++) {
-            int index = drawEvery ? i : (int)(i * ((float)values.size()/canvas.width));
-            float value = values.get(index);
-            int x = (int)((canvas.width * index) / (float)values.size());
-            float y = (1f - ((value - minY) / (maxY - minY))) * canvas.height;
-            canvas.line(lastX, lastY, x, y);
+            int index = drawEvery ? i : (int)(i * ((double)values.size()/canvas.width));
+            double value = values.get(index);
+            int x = (int)((canvas.width * index) / (double)values.size());
+            double y = (1f - ((value - minY) / (maxY - minY))) * canvas.height;
+            canvas.line(lastX, (float)lastY, x, (float)y);
             lastX = x;
             lastY = y;
         }

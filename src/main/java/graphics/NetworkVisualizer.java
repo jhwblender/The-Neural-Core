@@ -31,9 +31,9 @@ public class NetworkVisualizer implements Drawable {
                 for(int endNode = 0; endNode < network.getLayerSize(layer + 1); endNode++){
                     int[] startPos = getNodePosition(layer, startNode);
                     int[] endPos = getNodePosition(layer+1, endNode);
-                    float weightValue = network.getWeightValue(layer, startNode, endNode);
+                    double weightValue = network.getWeightValue(layer, startNode, endNode);
                     int[] color = getColor(weightValue, 6);
-                    canvas.strokeWeight(Math.abs(weightValue));
+                    canvas.strokeWeight((float) Math.abs(weightValue));
                     canvas.stroke(color[0], color[1], color[2]);
                     canvas.line(startPos[0], startPos[1], endPos[0], endPos[1]);
                 }
@@ -46,7 +46,7 @@ public class NetworkVisualizer implements Drawable {
         for(int layer = 0; layer < network.getNumLayers(); layer++){
             for(int node = 0; node < network.getLayerSize(layer); node++){
                 int[] pos = getNodePosition(layer, node);
-                float nodeValue = network.getNodeValue(layer, node);
+                double nodeValue = network.getNodeValue(layer, node);
                 int[] color = getColor(nodeValue, 1);
                 canvas.fill(color[0],color[1],color[2]);
                 canvas.ellipse(pos[0],pos[1], nodeScale, nodeScale);
@@ -63,7 +63,7 @@ public class NetworkVisualizer implements Drawable {
         return pos;
     }
 
-    private int[] getColor(float value, float max){ //assumed -1 to 1
+    private int[] getColor(double value, double max){ //assumed -1 to 1
         int[] color = new int[3];
         color[0] = (int)((value <= 0)? 255 : 255 * (max - Math.abs(value)));
         color[1] = (int)((value >= 0)? 255 : 255 * (max - Math.abs(value)));

@@ -2,12 +2,12 @@ package network;
 
 public class Node
 {
-    float value;
+    double value;
 
-    public float getValue(){
+    public double getValue(){
         return value;
     }
-    public void setValue(float input){
+    public void setValue(double input){
         value = input;
     }
 }

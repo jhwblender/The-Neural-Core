@@ -5,63 +5,70 @@ import network.Network;
 import main.Main;
 import network.Weight;
 
+import java.util.Arrays;
+
+import static java.lang.Math.ceil;
+import static java.lang.Math.exp;
+
 public class Training {
 
     private final Network network;
     private final Weight[] linearWeights;
-    private final float[] minWeights;
-    private final float[] maxWeights;
+    private final double[] minWeights;
+    private final double[] maxWeights;
     int targetWeightIndex = 0;
+    private int initialSamplePoints;
+    private int numIterations = 0;
 
     //---------------- Training Selector -----------------
-    private float[][] getTraining(boolean inOut){
+    private double[][] getTraining(boolean inOut){
         if(!inOut)
-            return binary3AddIn;
+            return charRecognitionIn;
         else
-            return binary3AddOut;
+            return charRecognitionOut;
     }
 
     //------------------ Training Data -----------------
-    private final float[][] xorIn = new float[][]{
+    private final double[][] xorIn = new double[][]{
             {0,0},
             {0,1},
             {1,0},
             {1,1}
     };
-    private final float[][] xorOut = new float[][]{
+    private final double[][] xorOut = new double[][]{
             {0},
             {1},
             {1},
             {0}
     };
 
-    private final float[][] orIn = new float[][]{
+    private final double[][] orIn = new double[][]{
             {0,0},
             {0,1},
             {1,0},
             {1,1}
     };
-    private final float[][] orOut = new float[][]{
+    private final double[][] orOut = new double[][]{
             {0},
             {1},
             {1},
             {1}
     };
 
-    private final float[][] andIn = new float[][]{
+    private final double[][] andIn = new double[][]{
             {0,0},
             {0,1},
             {1,0},
             {1,1}
     };
-    private final float[][] andOut = new float[][]{
+    private final double[][] andOut = new double[][]{
             {0},
             {0},
             {0},
             {1}
     };
 
-    private final float[][] binary3AddIn = new float[][]{
+    private final double[][] binary3AddIn = new double[][]{
             {0,0,0},
             {0,0,1},
             {0,1,0},
@@ -71,7 +78,7 @@ public class Training {
             {1,1,0},
             {1,1,1}
     };
-    private final float[][] binary3AddOut = new float[][]{
+    private final double[][] binary3AddOut = new double[][]{
             {0,0},
             {0,1},
             {0,1},
@@ -82,7 +89,7 @@ public class Training {
             {1,1}
     };
 
-    private final float[][] charRecognitionIn = new float[][]{
+    private final double[][] charRecognitionIn = new double[][]{
             {0,1,0,1,1,1,0,1,0},
             {0,0,0,1,1,1,0,0,0},
             {1,1,1,0,1,0,1,1,1},
@@ -91,7 +98,7 @@ public class Training {
             {1,0,0,1,0,0,1,1,1},
             {1,0,1,1,1,1,1,0,1}
     };
-    private final float[][] charRecognitionOut = new float[][]{
+    private final double[][] charRecognitionOut = new double[][]{
             {0,0,0,0,0,0,1},
             {0,0,0,0,0,1,0},
             {0,0,0,0,1,0,0},
@@ -105,8 +112,8 @@ public class Training {
     public Training(Network network){
         this.network = network;
         this.linearWeights = network.getLinearWeights();
-        minWeights = new float[network.getNumWeights()];
-        maxWeights = new float[network.getNumWeights()];
+        minWeights = new double[network.getNumWeights()];
+        maxWeights = new double[network.getNumWeights()];
 
         for(int i = 0; i < linearWeights.length; i++){
             minWeights[i] = -2;
@@ -114,38 +121,46 @@ public class Training {
         }
 
         //Starting error
+        double startingError = getTrainingSamplesError();
         Main.graph.addValue(getTrainingSamplesError());
+        System.out.println(startingError);
+        System.exit(0);
+        initialSamplePoints = 50 * network.getNumWeights();
     }
 
     //------------------ Training Methods -----------------
     public void train(){
-        float targetMinWeight = minWeights[targetWeightIndex];
-        float targetMaxWeight = maxWeights[targetWeightIndex];
-        float targetMidWeight = (targetMinWeight + targetMaxWeight) / 2;
+        double targetMinWeight = minWeights[targetWeightIndex];
+        double targetMaxWeight = maxWeights[targetWeightIndex];
+        double targetMidWeight = (targetMinWeight + targetMaxWeight) / 2;
 
         //For each sample point
-        int numSamplePoints = 50 * network.getNumWeights();
-        float lowerRegionErrorSum = 0;
-        float upperRegionErrorSum = 0;
+//        int numSamplePoints = (int) ceil(initialSamplePoints * exp(-0.3 * numIterations));
+        int numSamplePoints = 500;
+        if(numSamplePoints == 1)
+            return;
+        System.out.println("numSamplePoints: "+numSamplePoints);
+        double lowerRegionErrorSum = 0;
+        double upperRegionErrorSum = 0;
         for(int point = 0; point < numSamplePoints; point++) {
             //Choose random point
             for (int i = 0; i < linearWeights.length; i++) {
-                float minWeight = minWeights[i];
-                float maxWeight = maxWeights[i];
+                double minWeight = minWeights[i];
+                double maxWeight = maxWeights[i];
                 linearWeights[i].setWeight(Tools.randRange(minWeight, maxWeight));
             }
             //Set and test lower target region
             linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMinWeight, targetMidWeight));
-            float lowerRegionError = getTrainingSamplesError();
+            double lowerRegionError = getTrainingSamplesError();
             lowerRegionErrorSum += lowerRegionError;
 
             //Set and test upper target region
             linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMidWeight, targetMaxWeight));
-            float upperRegionError = getTrainingSamplesError();
+            double upperRegionError = getTrainingSamplesError();
             upperRegionErrorSum += upperRegionError;
         }
-        float lowerRegionError = lowerRegionErrorSum/numSamplePoints;
-        float upperRegionError = upperRegionErrorSum/numSamplePoints;
+        double lowerRegionError = lowerRegionErrorSum/(double)numSamplePoints;
+        double upperRegionError = upperRegionErrorSum/(double)numSamplePoints;
 
         if(lowerRegionError < upperRegionError){
             //Lower region wins
@@ -157,31 +172,33 @@ public class Training {
             Main.graph.addValue(100*upperRegionError);
         }
 
-        //Go to next dimension
+        //Go to next target
         targetWeightIndex = (targetWeightIndex+1) % linearWeights.length;
+        numIterations += 1;
     }
     //----------------------------------------------------------------------
 
     //------------ Calculate the average error of the training set------------
     //returns array: [avgError, avgMaxError, maxError]
-    private float getTrainingSamplesError(){
-        float avgErrorSum = 0;
-        float maxErrorSum = 0;
-        float maxError = 0;
+    private double getTrainingSamplesError(){
+        double avgErrorSum = 0;
+        double maxErrorSum = 0;
+        double maxError = 0;
         int numSamples = getTraining(false).length;
         for(int set = 0; set < numSamples; set++){
             network.feedForward(getTraining(false)[set]);
-            float[] avgAndMaxError = network.getAvgAndMaxError(getTraining(true)[set]);
-            float avgSetError = avgAndMaxError[0];
-            float maxSetError = avgAndMaxError[1];
+            double[] avgAndMaxError = network.getAvgAndMaxError(getTraining(true)[set]);
+            double avgSetError = avgAndMaxError[0];
+            double maxSetError = avgAndMaxError[1];
             maxErrorSum += maxSetError;
             maxError = Math.max(maxError, maxSetError);   //Experimenting
             avgErrorSum  += avgSetError;
         }
-        float avgError = avgErrorSum/numSamples;
-        float avgMaxError = maxErrorSum/numSamples;
+        double avgError = avgErrorSum/(double)numSamples;
+        double avgMaxError = maxErrorSum/(double)numSamples;
 
         //return final error
-        return (avgMaxError + (0.8f * avgError + 0.2f * maxError)) / 2f;
+        return avgError;
+//        return (avgMaxError + (0.8f * avgError + 0.2f * maxError)) / 2f; todo UNCOMMENT THIS!
     }
  }

@@ -44,11 +44,11 @@ public class WeightMaster {
         return linearWeights.length;
     }
 
-    public float getWeight(int layerStart, int startNode, int endNode){
+    public double getWeight(int layerStart, int startNode, int endNode){
         return weights[layerStart][startNode][endNode].getWeight();
     }
 
-    public float getWeight(int num){
+    public double getWeight(int num){
         return linearWeights[num].getWeight();
     }
 

@@ -9,7 +9,7 @@ import training.Training;
 
 public class Main extends PApplet{
 
-    final static int[] dimensions = new int[]{3, 3, 2}; //Network Size
+    final static int[] dimensions = new int[]{9, 8, 7}; //Network Size
 
     Graphics graphics;
     public static Network network;
