@@ -1,22 +1,27 @@
 package training;
 
+import main.Tools;
 import network.Network;
 import main.Main;
+import network.Weight;
 
 public class Training {
 
+    private final Network network;
+    private final Weight[] linearWeights;
+    private final float[] minWeights;
+    private final float[] maxWeights;
+    int targetWeightIndex = 0;
+
+    //---------------- Training Selector -----------------
     private float[][] getTraining(boolean inOut){
         if(!inOut)
-            return xorIn;
+            return binary3AddIn;
         else
-            return xorOut;
+            return binary3AddOut;
     }
 
-    private final Network network;
-    private final int[] dimensions;
-    final float trainingMultiplier;
-    final float wiggleAdd;
-
+    //------------------ Training Data -----------------
     private final float[][] xorIn = new float[][]{
             {0,0},
             {0,1},
@@ -96,58 +101,87 @@ public class Training {
             {1,0,0,0,0,0,0}
     };
 
+    //------------------ Constructor -----------------
     public Training(Network network){
-        this.trainingMultiplier = Main.trainingMultiplier;
-        this.wiggleAdd = Main.wiggleAdd;
         this.network = network;
-        dimensions = network.getLayerSizes();
+        this.linearWeights = network.getLinearWeights();
+        minWeights = new float[network.getNumWeights()];
+        maxWeights = new float[network.getNumWeights()];
+
+        for(int i = 0; i < linearWeights.length; i++){
+            minWeights[i] = -2;
+            maxWeights[i] = 2;
+        }
+
+        //Starting error
+        Main.graph.addValue(getTrainingSamplesError());
     }
 
+    //------------------ Training Methods -----------------
     public void train(){
-        float[] errorAndVariation = calculateError();
-        float error = errorAndVariation[0];
-        calculateSlope(getPenalty(errorAndVariation));
-        network.descend(trainingMultiplier * getPenalty(errorAndVariation), Main.variationFactor);
-        Main.graph.addValue(100*error);
-    }
+        float targetMinWeight = minWeights[targetWeightIndex];
+        float targetMaxWeight = maxWeights[targetWeightIndex];
+        float targetMidWeight = (targetMinWeight + targetMaxWeight) / 2;
 
-    private float getPenalty(float[] errorAndVariation){
-        //errorAndVariation[0] = Error
-        //errorAndVariation[1] = Variation
-        return (errorAndVariation[0]*0.5f + errorAndVariation[1]*0.5f);
-    }
+        //For each sample point
+        int numSamplePoints = 50 * network.getNumWeights();
+        float lowerRegionErrorSum = 0;
+        float upperRegionErrorSum = 0;
+        for(int point = 0; point < numSamplePoints; point++) {
+            //Choose random point
+            for (int i = 0; i < linearWeights.length; i++) {
+                float minWeight = minWeights[i];
+                float maxWeight = maxWeights[i];
+                linearWeights[i].setWeight(Tools.randRange(minWeight, maxWeight));
+            }
+            //Set and test lower target region
+            linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMinWeight, targetMidWeight));
+            float lowerRegionError = getTrainingSamplesError();
+            lowerRegionErrorSum += lowerRegionError;
 
-    private float[] calculateError(){
-        float errorSum = 0;
-        float minError = Float.MAX_VALUE; //experimenting
-        float maxError = 0; //experimenting
-        float variation = 0; //experimenting
+            //Set and test upper target region
+            linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMidWeight, targetMaxWeight));
+            float upperRegionError = getTrainingSamplesError();
+            upperRegionErrorSum += upperRegionError;
+        }
+        float lowerRegionError = lowerRegionErrorSum/numSamplePoints;
+        float upperRegionError = upperRegionErrorSum/numSamplePoints;
+
+        if(lowerRegionError < upperRegionError){
+            //Lower region wins
+            maxWeights[targetWeightIndex] = targetMidWeight;
+            Main.graph.addValue(lowerRegionError);
+        }else{
+            //Upper region wins
+            minWeights[targetWeightIndex] = targetMidWeight;
+            Main.graph.addValue(100*upperRegionError);
+        }
+
+        //Go to next dimension
+        targetWeightIndex = (targetWeightIndex+1) % linearWeights.length;
+    }
+    //----------------------------------------------------------------------
+
+    //------------ Calculate the average error of the training set------------
+    //returns array: [avgError, avgMaxError, maxError]
+    private float getTrainingSamplesError(){
+        float avgErrorSum = 0;
+        float maxErrorSum = 0;
+        float maxError = 0;
         int numSamples = getTraining(false).length;
         for(int set = 0; set < numSamples; set++){
             network.feedForward(getTraining(false)[set]);
-            float[] errorAndVariation = network.getErrorAndVariation(getTraining(true)[set]);
-            float error         = errorAndVariation[0];
-            float nodeVariation = errorAndVariation[1];
-            minError = Math.min(minError, error);   //Experimenting
-            maxError = Math.max(maxError, error);   //Experimenting
-            variation += (maxError - minError + nodeVariation)/2; //This 2 is okay because it's averaging 2 %s
-            errorSum  += error;
+            float[] avgAndMaxError = network.getAvgAndMaxError(getTraining(true)[set]);
+            float avgSetError = avgAndMaxError[0];
+            float maxSetError = avgAndMaxError[1];
+            maxErrorSum += maxSetError;
+            maxError = Math.max(maxError, maxSetError);   //Experimenting
+            avgErrorSum  += avgSetError;
         }
-        return new float[]{errorSum/numSamples, variation/numSamples};// * (1 + (maxError-minError)); //multiplier experimental
-    }
+        float avgError = avgErrorSum/numSamples;
+        float avgMaxError = maxErrorSum/numSamples;
 
-    private void calculateSlope(float baseError){
-        for(int startLayer = 0; startLayer < dimensions.length - 1; startLayer++){
-            int endLayer = startLayer+1;
-            for(int endNode = 0; endNode < dimensions[endLayer]; endNode++){
-                for(int startNode = 0; startNode < dimensions[startLayer]; startNode++){                                //go through each start node
-                    network.setWiggleWeight(startLayer, startNode, endNode, wiggleAdd);
-                    float wiggleError = getPenalty(calculateError());
-                    network.wiggleReset(startLayer, startNode, endNode);
-                    float slope = (wiggleError - baseError) / wiggleAdd;
-                    network.setSlope(startLayer, startNode, endNode, slope);
-                }
-            }
-        }
+        //return final error
+        return (avgMaxError + (0.8f * avgError + 0.2f * maxError)) / 2f;
     }
-}
+ }

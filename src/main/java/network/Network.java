@@ -1,12 +1,12 @@
 package network;
 
+import main.Tools;
+
 public class Network {
 
-    final float activationMax = 1;
-    final float activationMin = 0;
     final int numLayers;
     int[] dimensions;
-    WeightMaster weights;
+    WeightMaster weights, minWeights, maxWeights;
     NodeMaster nodes;
     float currentOverallError;
 
@@ -16,8 +16,8 @@ public class Network {
 
         nodes = new NodeMaster();
         nodes.init(dimensions);
-        weights = new WeightMaster();
-        weights.init(dimensions);
+
+        weights = new WeightMaster(dimensions, null);
     }
 
     public void feedForward(float[] input){
@@ -34,64 +34,64 @@ public class Network {
         }
     }
 
-    public float[] getErrorAndVariation(float[] desired){
+    public float[] getAvgAndMaxError(float[] desired){
         int lastLayer = numLayers-1;
         int lastLayerSize = dimensions[lastLayer];
         assert(desired.length == lastLayerSize);
 
-        float minError = Float.MAX_VALUE; //experimenting
-        float maxError = 0; //experimenting
-        float errorSum = 0; //experimenting
+        float maxError = 0;
+        float errorSum = 0;
         for(int node = 0; node < lastLayerSize; node++){
             float error = Math.abs(desired[node] - getNodeValue(lastLayer, node));
-            minError = Math.min(minError, error);   //Experimenting
             maxError = Math.max(maxError, error);   //Experimenting
             errorSum += error;
         }
-        errorSum /= activationMax - activationMin;
-        return new float[]{errorSum/lastLayerSize, (maxError - minError)/(activationMax - activationMin)};// returns % error and % variation
+        float avgError = errorSum/lastLayerSize;
+        //Get range for normalizing to %
+        float desiredDelta = Tools.getDelta(desired);
+        //Convert to %
+        avgError = avgError;///desiredDelta;
+        maxError = maxError;///desiredDelta;
+//        System.out.println("avgError: "+avgError+", maxError: "+maxError);
+        return new float[]{avgError, maxError};// returns % error and % variation
     }
 
-    //REMEMBER to change activationMax and activationMin
     private float activation(float x){
-        return sigmoidActivation(x);
+        return modifiedSigmoidActivation(x);
     }
-
+    //---------- Activation Functions ----------
     private float modifiedSigmoidActivation(float x){
-        return (float)(2/(1+Math.pow(Math.E,-x))-1); //modified to be -1 to 1, with a .995 range by -2 to 2.
+        return (float)(2/(1+Math.pow(Math.E,-3*x))-1); //RANGE: y[-1, 1] with a .995 range x[-2, 2].
     }
-    private float sigmoidActivation(float x){
-        return (float)(1/(1+Math.pow(Math.E,-x)));
+    private float standardSigmoidActivation(float x){
+        return (float)(1/(1+Math.pow(Math.E,-x))); //RANGE: y[0, 1] with a .995 range x[-6, 6].
     }
+    //--------------------------------------------
 
+    //------------- Node Getters -------------------------
     public float getNodeValue(int layer, int node){
         return nodes.getValue(layer, node);
     }
+    //-----------------------------------------------------
+    //------------- Weight Getters -------------------------
+    public int getNumWeights(){
+        return weights.getNumWeights();
+    }
 
-    public float getWeightValue(int layer, int startNode, int endNode){
+    public Weight[] getLinearWeights(){
+        return weights.getLinearWeights();
+    }
+
+    public float getWeightValue(int layer, int startNode, int endNode) {
         return weights.getWeight(layer, startNode, endNode);
     }
-    public void setWiggleWeight(int layer, int startNode, int endNode, float value) {
-        weights.setWiggleWeight(layer, startNode, endNode, value);
-    }
-    public void wiggleReset(int layer, int startNode, int endNode){
-        weights.wiggleReset(layer, startNode, endNode);
-    }
-    public void setSlope(int layer, int startNode, int endNode, float value){
-        weights.setSlope(layer, startNode, endNode, value);
-    }
-    public void descend(float multiplier, float variationFactor){
-        weights.descend(multiplier, variationFactor);
-    }
-
+    //----------------------------------------------------
+    //------------- Layer Getters -------------------------
     public int getNumLayers(){
         return numLayers;
     }
     public int getLayerSize(int layer){
         return dimensions[layer];
-    }
-    public int[] getLayerSizes(){
-        return dimensions;
     }
     public int getMaxLayerSize(){
         int max = 0;
@@ -100,4 +100,5 @@ public class Network {
         }
         return max;
     }
+    //-----------------------------------------------------
 }

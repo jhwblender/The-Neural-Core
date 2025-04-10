@@ -10,6 +10,7 @@ public class NodeMaster {
         numLayers = dimensions.length;
         this.dimensions = dimensions;
 
+        //Initialize nodes
         nodes = new Node[numLayers][];
         for(int layer = 0; layer < numLayers; layer++){
             nodes[layer] = new Node[dimensions[layer]];
