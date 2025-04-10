@@ -121,10 +121,6 @@ public class Training {
         }
 
         //Starting error
-        double startingError = getTrainingSamplesError();
-        Main.graph.addValue(getTrainingSamplesError());
-        System.out.println(startingError);
-        System.exit(0);
         initialSamplePoints = 50 * network.getNumWeights();
     }
 
@@ -136,7 +132,8 @@ public class Training {
 
         //For each sample point
 //        int numSamplePoints = (int) ceil(initialSamplePoints * exp(-0.3 * numIterations));
-        int numSamplePoints = 500;
+//        int numSamplePoints = 2000;
+        int numSamplePoints = (int) ceil(initialSamplePoints / (1 + .05f * numIterations));
         if(numSamplePoints == 1)
             return;
         System.out.println("numSamplePoints: "+numSamplePoints);
@@ -198,7 +195,11 @@ public class Training {
         double avgMaxError = maxErrorSum/(double)numSamples;
 
         //return final error
-        return avgError;
-//        return (avgMaxError + (0.8f * avgError + 0.2f * maxError)) / 2f; todo UNCOMMENT THIS!
+//        return avgError;
+//        return avgMaxError;
+//        return maxError;
+        return (0.5f * avgError + 0.1f * maxError + 0.4f * avgMaxError);
+//        return (avgMaxError + avgError + maxError)/3f;
+//        return (avgMaxError + (0.8f * avgError + 0.2f * maxError)) / 2f;
     }
  }
