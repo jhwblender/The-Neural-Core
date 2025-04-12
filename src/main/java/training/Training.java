@@ -7,15 +7,12 @@ import network.Weight;
 
 import java.util.Arrays;
 
-import static java.lang.Math.ceil;
-import static java.lang.Math.exp;
+import static java.lang.Math.*;
 
 public class Training {
 
     private final Network network;
     private final Weight[] linearWeights;
-    private final double[] minWeights;
-    private final double[] maxWeights;
     int targetWeightIndex = 0;
     private int initialSamplePoints;
     private int numIterations = 0;
@@ -112,65 +109,72 @@ public class Training {
     public Training(Network network){
         this.network = network;
         this.linearWeights = network.getLinearWeights();
-        minWeights = new double[network.getNumWeights()];
-        maxWeights = new double[network.getNumWeights()];
 
-        for(int i = 0; i < linearWeights.length; i++){
-            minWeights[i] = -2;
-            maxWeights[i] = 2;
+        for (Weight linearWeight : linearWeights) {
+            linearWeight.setRangeMinMax(-4, 4);
         }
 
         //Starting error
-        initialSamplePoints = 50 * network.getNumWeights();
+        initialSamplePoints = 200 * network.getNumWeights();
     }
 
     //------------------ Training Methods -----------------
     public void train(){
-        double targetMinWeight = minWeights[targetWeightIndex];
-        double targetMaxWeight = maxWeights[targetWeightIndex];
+        double targetMinWeight = linearWeights[targetWeightIndex].getRangeMin();
+        double targetMaxWeight = linearWeights[targetWeightIndex].getRangeMax();
         double targetMidWeight = (targetMinWeight + targetMaxWeight) / 2;
 
         //For each sample point
-//        int numSamplePoints = (int) ceil(initialSamplePoints * exp(-0.3 * numIterations));
-//        int numSamplePoints = 2000;
-        int numSamplePoints = (int) ceil(initialSamplePoints / (1 + .05f * numIterations));
+        int numSamplePoints = (int) ceil(initialSamplePoints / (1 + .25f * numIterations)); //higher the coefficient, the quicker the dropoff
+        double[] lowerRegionSamples = new double[numSamplePoints];
+        double[] upperRegionSamples = new double[numSamplePoints];
         if(numSamplePoints == 1)
             return;
-        System.out.println("numSamplePoints: "+numSamplePoints);
+        System.out.println("numSamplePoints: "+numSamplePoints); //todo: Make this go into the graphics
         double lowerRegionErrorSum = 0;
         double upperRegionErrorSum = 0;
         for(int point = 0; point < numSamplePoints; point++) {
             //Choose random point
-            for (int i = 0; i < linearWeights.length; i++) {
-                double minWeight = minWeights[i];
-                double maxWeight = maxWeights[i];
-                linearWeights[i].setWeight(Tools.randRange(minWeight, maxWeight));
+            for (Weight linearWeight : linearWeights) {
+                linearWeight.randomize();
             }
             //Set and test lower target region
             linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMinWeight, targetMidWeight));
             double lowerRegionError = getTrainingSamplesError();
+            lowerRegionSamples[point] = lowerRegionError;
             lowerRegionErrorSum += lowerRegionError;
 
             //Set and test upper target region
             linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMidWeight, targetMaxWeight));
             double upperRegionError = getTrainingSamplesError();
+            upperRegionSamples[point] = upperRegionError;
             upperRegionErrorSum += upperRegionError;
         }
-        double lowerRegionError = lowerRegionErrorSum/(double)numSamplePoints;
-        double upperRegionError = upperRegionErrorSum/(double)numSamplePoints;
+        double lowerRegionErrorAvg = lowerRegionErrorSum/(double)numSamplePoints;
+        double upperRegionErrorAvg = upperRegionErrorSum/(double)numSamplePoints;
+//        Arrays.sort(lowerRegionSamples);
+//        double lowerRegionError = lowerRegionSamples[lowerRegionSamples.length/2];
+//        Arrays.sort(upperRegionSamples);
+//        double upperRegionError = upperRegionSamples[upperRegionSamples.length/2];
 
-        if(lowerRegionError < upperRegionError){
+//        double lowerRegionError = (lowerRegionErrorAvg + lowerRegionErrorMid)/2;
+//        double upperRegionError = (upperRegionErrorAvg + upperRegionErrorMid)/2;
+
+        if(lowerRegionErrorAvg < upperRegionErrorAvg){
             //Lower region wins
-            maxWeights[targetWeightIndex] = targetMidWeight;
-            Main.graph.addValue(100*lowerRegionError);
+            linearWeights[targetWeightIndex].setRangeMax(targetMidWeight);
+            Main.graph.addValue(100*lowerRegionErrorAvg);
         }else{
             //Upper region wins
-            minWeights[targetWeightIndex] = targetMidWeight;
-            Main.graph.addValue(100*upperRegionError);
+            linearWeights[targetWeightIndex].setRangeMin(targetMidWeight);
+            Main.graph.addValue(100*upperRegionErrorAvg);
         }
 
         //Go to next target
         targetWeightIndex = (targetWeightIndex+1) % linearWeights.length;
+        if(targetWeightIndex == 0){
+            Tools.shuffleArray(linearWeights);
+        }
         numIterations += 1;
     }
     //----------------------------------------------------------------------
@@ -179,27 +183,21 @@ public class Training {
     //returns array: [avgError, avgMaxError, maxError]
     private double getTrainingSamplesError(){
         double avgErrorSum = 0;
-        double maxErrorSum = 0;
         double maxError = 0;
+        double minError = Double.MAX_VALUE;
         int numSamples = getTraining(false).length;
         for(int set = 0; set < numSamples; set++){
             network.feedForward(getTraining(false)[set]);
-            double[] avgAndMaxError = network.getAvgAndMaxError(getTraining(true)[set]);
-            double avgSetError = avgAndMaxError[0];
-            double maxSetError = avgAndMaxError[1];
-            maxErrorSum += maxSetError;
-            maxError = Math.max(maxError, maxSetError);   //Experimenting
-            avgErrorSum  += avgSetError;
+            double setError = network.getSetError(getTraining(true)[set]);
+            maxError = Math.max(maxError, setError);   //Experimenting
+            minError = Math.min(minError, setError);   //Experimenting
+            avgErrorSum  += setError;
         }
         double avgError = avgErrorSum/(double)numSamples;
-        double avgMaxError = maxErrorSum/(double)numSamples;
+        double errorRange = maxError - minError;
 
         //return final error
-//        return avgError;
-//        return avgMaxError;
-//        return maxError;
-        return (0.5f * avgError + 0.1f * maxError + 0.4f * avgMaxError);
-//        return (avgMaxError + avgError + maxError)/3f;
-//        return (avgMaxError + (0.8f * avgError + 0.2f * maxError)) / 2f;
+//        return pow(avgError, errorRange);
+        return avgError;
     }
  }

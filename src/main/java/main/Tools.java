@@ -1,19 +1,20 @@
 package main;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class Tools {
 
     public static double randRange(double min, double max){
         return ((max-min)*Math.random()+min);
     }
 
-    public static double getDelta(double[] array){
-        double max = array[0];
-        double min = array[0];
-        for(int i = 1; i < array.length; i++){
-            max = Math.max(array[i], max);
-            min = Math.min(array[i], min);
+    public static <T> void shuffleArray(T[] array){
+        ArrayList<T> oldList = new ArrayList<>(Arrays.asList(array));
+        for(int i = 0; i < array.length; i++){
+            int randIndex = (int)(Math.random() * oldList.size());
+            array[i] = (oldList.get(randIndex));
+            oldList.remove(randIndex);
         }
-        return max-min;
     }
-
 }

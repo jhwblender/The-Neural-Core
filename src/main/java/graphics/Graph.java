@@ -11,9 +11,11 @@ public class Graph implements Drawable{
     ArrayList<Double> values;
     double minY = Double.MAX_VALUE;
     double maxY = 0;
+    int[] color;
 
-    public Graph(){
+    public Graph(int[] color){
         values = new ArrayList<>();
+        this.color = color;
     }
 
     @Override
@@ -42,7 +44,7 @@ public class Graph implements Drawable{
         }
 
         canvas.strokeWeight(3);
-        canvas.stroke(0, 0, 255);
+        canvas.stroke(color[0], color[1], color[2]);
         canvas.fill(255);
 
         //Draw Graph

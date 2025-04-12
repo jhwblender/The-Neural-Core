@@ -32,7 +32,7 @@ public class NetworkVisualizer implements Drawable {
                     int[] startPos = getNodePosition(layer, startNode);
                     int[] endPos = getNodePosition(layer+1, endNode);
                     double weightValue = network.getWeightValue(layer, startNode, endNode);
-                    int[] color = getColor(weightValue, 6);
+                    int[] color = getColor(weightValue, -4, 4);
                     canvas.strokeWeight((float) Math.abs(weightValue));
                     canvas.stroke(color[0], color[1], color[2]);
                     canvas.line(startPos[0], startPos[1], endPos[0], endPos[1]);
@@ -41,13 +41,21 @@ public class NetworkVisualizer implements Drawable {
         }
     }
 
+    private int[] getColor(double value, double min, double max){ //assumed -1 to 1
+        int[] color = new int[3];
+        color[0] = (int)((value <= 0)? 255 : 255f * (max - Math.abs(value))/(max - min));
+        color[1] = (int)((value >= 0)? 255 : 255f * (max - Math.abs(value))/(max - min));
+        color[2] = (int)(255 * (max - Math.abs(value))/(max - min));
+        return color;
+    }
+
     private void drawNodes(){
         canvas.noStroke();
         for(int layer = 0; layer < network.getNumLayers(); layer++){
             for(int node = 0; node < network.getLayerSize(layer); node++){
                 int[] pos = getNodePosition(layer, node);
                 double nodeValue = network.getNodeValue(layer, node);
-                int[] color = getColor(nodeValue, 1);
+                int[] color = getColor(nodeValue, 0, 1);
                 canvas.fill(color[0],color[1],color[2]);
                 canvas.ellipse(pos[0],pos[1], nodeScale, nodeScale);
             }
@@ -61,14 +69,6 @@ public class NetworkVisualizer implements Drawable {
         pos[0] = (2 * layer) * xStep + xStep;
         pos[1] = (2 * node) * yStep + yStep;
         return pos;
-    }
-
-    private int[] getColor(double value, double max){ //assumed -1 to 1
-        int[] color = new int[3];
-        color[0] = (int)((value <= 0)? 255 : 255 * (max - Math.abs(value)));
-        color[1] = (int)((value >= 0)? 255 : 255 * (max - Math.abs(value)));
-        color[2] = (int)(255 * (max - Math.abs(value)));
-        return color;
     }
 
 }
