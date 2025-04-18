@@ -48,7 +48,7 @@ public class Network {
         double avgError = errorSum/(double)lastLayerSize;
         double errorRange = maxError - minError;
 //        return Math.pow(avgError, errorRange); //returns % error and % variation
-        return avgError;// returns % error and % variation
+        return avgError;// + 0.25 * errorRange;// returns % error and % variation
     }
 
     private double activation(double x){

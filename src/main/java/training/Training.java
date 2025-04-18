@@ -5,8 +5,6 @@ import network.Network;
 import main.Main;
 import network.Weight;
 
-import java.util.Arrays;
-
 import static java.lang.Math.*;
 
 public class Training {
@@ -14,8 +12,8 @@ public class Training {
     private final Network network;
     private final Weight[] linearWeights;
     int targetWeightIndex = 0;
-    private int initialSamplePoints;
     private int numIterations = 0;
+    private double avgStabilityReq = 0.00000001; //Sample until this threshold
 
     //---------------- Training Selector -----------------
     private double[][] getTraining(boolean inOut){
@@ -114,8 +112,7 @@ public class Training {
             linearWeight.setRangeMinMax(-4, 4);
         }
 
-        //Starting error
-        initialSamplePoints = 200 * network.getNumWeights();
+
     }
 
     //------------------ Training Methods -----------------
@@ -125,15 +122,14 @@ public class Training {
         double targetMidWeight = (targetMinWeight + targetMaxWeight) / 2;
 
         //For each sample point
-        int numSamplePoints = (int) ceil(initialSamplePoints / (1 + .25f * numIterations)); //higher the coefficient, the quicker the dropoff
-        double[] lowerRegionSamples = new double[numSamplePoints];
-        double[] upperRegionSamples = new double[numSamplePoints];
-        if(numSamplePoints == 1)
-            return;
-        System.out.println("numSamplePoints: "+numSamplePoints); //todo: Make this go into the graphics
+        int numSamplePoints = 0; //Tracking
         double lowerRegionErrorSum = 0;
         double upperRegionErrorSum = 0;
-        for(int point = 0; point < numSamplePoints; point++) {
+        double upperRegionErrorAvg = 0;
+        double lowerRegionErrorAvg = 0;
+        double lastLowerRegionErrorAvg = 0;
+        double lastUpperRegionErrorAvg = 0;
+        do {
             //Choose random point
             for (Weight linearWeight : linearWeights) {
                 linearWeight.randomize();
@@ -141,26 +137,29 @@ public class Training {
             //Set and test lower target region
             linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMinWeight, targetMidWeight));
             double lowerRegionError = getTrainingSamplesError();
-            lowerRegionSamples[point] = lowerRegionError;
             lowerRegionErrorSum += lowerRegionError;
 
             //Set and test upper target region
             linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMidWeight, targetMaxWeight));
             double upperRegionError = getTrainingSamplesError();
-            upperRegionSamples[point] = upperRegionError;
             upperRegionErrorSum += upperRegionError;
-        }
-        double lowerRegionErrorAvg = lowerRegionErrorSum/(double)numSamplePoints;
-        double upperRegionErrorAvg = upperRegionErrorSum/(double)numSamplePoints;
-//        Arrays.sort(lowerRegionSamples);
-//        double lowerRegionError = lowerRegionSamples[lowerRegionSamples.length/2];
-//        Arrays.sort(upperRegionSamples);
-//        double upperRegionError = upperRegionSamples[upperRegionSamples.length/2];
+            numSamplePoints++;
+            if(numSamplePoints%10==0){
+                lastUpperRegionErrorAvg = upperRegionErrorAvg;
+                lastLowerRegionErrorAvg = lowerRegionErrorAvg;
+            }
+            lowerRegionErrorAvg = lowerRegionErrorSum/(double)numSamplePoints;
+            upperRegionErrorAvg = upperRegionErrorSum/(double)numSamplePoints;
+        }while(
+                (abs(lowerRegionErrorAvg - lastLowerRegionErrorAvg) > avgStabilityReq) ||
+                (abs(upperRegionErrorAvg - lastUpperRegionErrorAvg) > avgStabilityReq)
+        );
+        System.out.println("numSamplePoints: "+numSamplePoints); //todo: Make this go into the graphics
 
-//        double lowerRegionError = (lowerRegionErrorAvg + lowerRegionErrorMid)/2;
-//        double upperRegionError = (upperRegionErrorAvg + upperRegionErrorMid)/2;
+        double lowerScore = lowerRegionErrorAvg;
+        double upperScore = upperRegionErrorAvg;
 
-        if(lowerRegionErrorAvg < upperRegionErrorAvg){
+        if(lowerScore < upperScore){
             //Lower region wins
             linearWeights[targetWeightIndex].setRangeMax(targetMidWeight);
             Main.graph.addValue(100*lowerRegionErrorAvg);
@@ -189,8 +188,8 @@ public class Training {
         for(int set = 0; set < numSamples; set++){
             network.feedForward(getTraining(false)[set]);
             double setError = network.getSetError(getTraining(true)[set]);
-            maxError = Math.max(maxError, setError);   //Experimenting
-            minError = Math.min(minError, setError);   //Experimenting
+            maxError = max(maxError, setError);   //Experimenting
+            minError = min(minError, setError);   //Experimenting
             avgErrorSum  += setError;
         }
         double avgError = avgErrorSum/(double)numSamples;
@@ -198,6 +197,6 @@ public class Training {
 
         //return final error
 //        return pow(avgError, errorRange);
-        return avgError;
+        return avgError;// + 0.25 * errorRange; //returns % error and % variation
     }
  }
