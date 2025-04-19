@@ -1,6 +1,7 @@
 package graphics;
 
 import network.Network;
+import network.Weight;
 import processing.core.PApplet;
 
 public class NetworkVisualizer implements Drawable {
@@ -31,8 +32,18 @@ public class NetworkVisualizer implements Drawable {
                 for(int endNode = 0; endNode < network.getLayerSize(layer + 1); endNode++){
                     int[] startPos = getNodePosition(layer, startNode);
                     int[] endPos = getNodePosition(layer+1, endNode);
-                    double weightValue = network.getWeightValue(layer, startNode, endNode);
-                    int[] color = getColor(weightValue, -4, 4);
+                    Weight weight = network.getWeight(layer, startNode, endNode);
+                    double weightValue = weight.getWeight();
+
+                    //Set Weight Color
+                    int[] color;
+                    if(!weight.isSpecial)
+                        color = getColor(weightValue, -4, 4);
+                    else
+                        color = new int[]{255, 255, 255}; //white
+                    weight.isSpecial = false;
+
+                    //Set actual canvas values and draw
                     canvas.strokeWeight((float) Math.abs(weightValue));
                     canvas.stroke(color[0], color[1], color[2]);
                     canvas.line(startPos[0], startPos[1], endPos[0], endPos[1]);

@@ -5,15 +5,17 @@ import network.Network;
 import main.Main;
 import network.Weight;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static java.lang.Math.*;
 
 public class Training {
 
     private final Network network;
-    private final Weight[] linearWeights;
-    int targetWeightIndex = 0;
+    private final ArrayList<Weight> linearWeights;
+//    int targetWeightIndex = 0;
     private int numIterations = 0;
-    private double avgStabilityReq = 0.00000001; //Sample until this threshold
 
     //---------------- Training Selector -----------------
     private double[][] getTraining(boolean inOut){
@@ -106,74 +108,104 @@ public class Training {
     //------------------ Constructor -----------------
     public Training(Network network){
         this.network = network;
-        this.linearWeights = network.getLinearWeights();
+        this.linearWeights = new ArrayList<>(List.of(network.getLinearWeights()));
 
         for (Weight linearWeight : linearWeights) {
             linearWeight.setRangeMinMax(-4, 4);
         }
-
-
     }
 
     //------------------ Training Methods -----------------
     public void train(){
-        double targetMinWeight = linearWeights[targetWeightIndex].getRangeMin();
-        double targetMaxWeight = linearWeights[targetWeightIndex].getRangeMax();
-        double targetMidWeight = (targetMinWeight + targetMaxWeight) / 2;
+        //Check if the training is done
+        if(linearWeights.isEmpty())
+            return;
+        int totalNumSamples = 0;
+        double lowestError = Double.MAX_VALUE;
+        Weight lowestErrorWeight = linearWeights.get(0);
+        boolean lowestErrorLowerOrUpper = false;
+        for(Weight currentWeight : linearWeights){
+//        for (int curWeightIndex = 0; curWeightIndex < linearWeights.size(); curWeightIndex++) {
+            double targetMinWeight = currentWeight.getRangeMin();
+            double targetMaxWeight = currentWeight.getRangeMax();
+            double targetMidWeight = (targetMinWeight + targetMaxWeight) / 2;
 
-        //For each sample point
-        int numSamplePoints = 0; //Tracking
-        double lowerRegionErrorSum = 0;
-        double upperRegionErrorSum = 0;
-        double upperRegionErrorAvg = 0;
-        double lowerRegionErrorAvg = 0;
-        double lastLowerRegionErrorAvg = 0;
-        double lastUpperRegionErrorAvg = 0;
-        do {
-            //Choose random point
-            for (Weight linearWeight : linearWeights) {
-                linearWeight.randomize();
+            //For each sample point
+            int numSamplePoints = 0; //Tracking
+            double lowerRegionErrorSum = 0;
+            double upperRegionErrorSum = 0;
+            double upperRegionErrorAvg = 0;
+            double lowerRegionErrorAvg = 0;
+            double lastLowerRegionErrorAvg = 0;
+            double lastUpperRegionErrorAvg = 0;
+
+            do {
+                //Choose random nD point
+                for (Weight linearWeight : linearWeights) {
+                    if(linearWeight != null)
+                        linearWeight.randomize();
+                }
+                //Set and test lower target region
+                currentWeight.setWeight(Tools.randRange(targetMinWeight, targetMidWeight));
+                double lowerRegionError = getTrainingSamplesError();
+                lowerRegionErrorSum += lowerRegionError;
+
+                //Set and test upper target region
+                currentWeight.setWeight(Tools.randRange(targetMidWeight, targetMaxWeight));
+                double upperRegionError = getTrainingSamplesError();
+                upperRegionErrorSum += upperRegionError;
+
+                numSamplePoints++;
+                totalNumSamples++;
+
+                //Makes sample points in batches of 10
+                if (numSamplePoints % 10 == 0) {
+                    lastUpperRegionErrorAvg = upperRegionErrorAvg;
+                    lastLowerRegionErrorAvg = lowerRegionErrorAvg;
+                }
+
+                //Find average error
+                lowerRegionErrorAvg = lowerRegionErrorSum / (double) numSamplePoints;
+                upperRegionErrorAvg = upperRegionErrorSum / (double) numSamplePoints;
+
+                //Check if average error is stable
+            } while (
+                    (abs(lowerRegionErrorAvg - lastLowerRegionErrorAvg) > Main.avgStabilityReq) ||
+                            (abs(upperRegionErrorAvg - lastUpperRegionErrorAvg) > Main.avgStabilityReq)
+            );
+
+            double lowerError = lastLowerRegionErrorAvg;
+            double upperError = lastUpperRegionErrorAvg;
+
+            if (lowerError < lowestError) {
+                lowestError = lowerError;
+                lowestErrorWeight = currentWeight;
+                lowestErrorLowerOrUpper = false;
             }
-            //Set and test lower target region
-            linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMinWeight, targetMidWeight));
-            double lowerRegionError = getTrainingSamplesError();
-            lowerRegionErrorSum += lowerRegionError;
-
-            //Set and test upper target region
-            linearWeights[targetWeightIndex].setWeight(Tools.randRange(targetMidWeight, targetMaxWeight));
-            double upperRegionError = getTrainingSamplesError();
-            upperRegionErrorSum += upperRegionError;
-            numSamplePoints++;
-            if(numSamplePoints%10==0){
-                lastUpperRegionErrorAvg = upperRegionErrorAvg;
-                lastLowerRegionErrorAvg = lowerRegionErrorAvg;
+            if (upperError < lowestError) {
+                lowestError = upperError;
+                lowestErrorWeight = currentWeight;
+                lowestErrorLowerOrUpper = true;
             }
-            lowerRegionErrorAvg = lowerRegionErrorSum/(double)numSamplePoints;
-            upperRegionErrorAvg = upperRegionErrorSum/(double)numSamplePoints;
-        }while(
-                (abs(lowerRegionErrorAvg - lastLowerRegionErrorAvg) > avgStabilityReq) ||
-                (abs(upperRegionErrorAvg - lastUpperRegionErrorAvg) > avgStabilityReq)
-        );
-        System.out.println("numSamplePoints: "+numSamplePoints); //todo: Make this go into the graphics
-
-        double lowerScore = lowerRegionErrorAvg;
-        double upperScore = upperRegionErrorAvg;
-
-        if(lowerScore < upperScore){
+        }
+        assert lowestErrorWeight != null;
+        lowestErrorWeight.isSpecial = true;
+        if(!lowestErrorLowerOrUpper){
             //Lower region wins
-            linearWeights[targetWeightIndex].setRangeMax(targetMidWeight);
-            Main.graph.addValue(100*lowerRegionErrorAvg);
+            lowestErrorWeight.setRangeToLower();
         }else{
             //Upper region wins
-            linearWeights[targetWeightIndex].setRangeMin(targetMidWeight);
-            Main.graph.addValue(100*upperRegionErrorAvg);
+            lowestErrorWeight.setRangeToUpper();
         }
 
-        //Go to next target
-        targetWeightIndex = (targetWeightIndex+1) % linearWeights.length;
-        if(targetWeightIndex == 0){
-            Tools.shuffleArray(linearWeights);
+        //Check if the weight is solidified
+        if(lowestErrorWeight.getRange() <= Main.weightSolidifiedReq){
+            linearWeights.remove(lowestErrorWeight);
+            System.out.println("Weight " + lowestErrorWeight.getIndex() + " solidified: " + lowestErrorWeight.getWeight());
         }
+        System.out.println("Total number of samples: " + totalNumSamples);
+        Main.graph.addValue(100*lowestError);
+
         numIterations += 1;
     }
     //----------------------------------------------------------------------
@@ -196,7 +228,8 @@ public class Training {
         double errorRange = maxError - minError;
 
         //return final error
-//        return pow(avgError, errorRange);
-        return avgError;// + 0.25 * errorRange; //returns % error and % variation
+//        return pow(errorRange, 1 + avgError);
+        return pow(avgError, 1 + errorRange);
+//        return avgError;// + 0.25 * errorRange; //returns % error and % variation
     }
  }

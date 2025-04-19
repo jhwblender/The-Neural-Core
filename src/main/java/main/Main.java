@@ -12,6 +12,9 @@ import java.util.Arrays;
 public class Main extends PApplet{
 
     final static int[] dimensions = new int[]{9, 8, 7}; //Network Size
+    //Sample until this accuracy threshold
+    final public static double avgStabilityReq = 0.000001; //0.00001
+    final public static double weightSolidifiedReq = 0.03;
 
     Graphics graphics;
     public static Network network;

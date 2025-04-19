@@ -24,7 +24,7 @@ public class Network {
             for(int endNode = 0; endNode < dimensions[endLayer]; endNode++){
                 double sum = 0;                                                                                          //reset sum
                 for(int startNode = 0; startNode < dimensions[startLayer]; startNode++){                                //go through each start node
-                    sum += nodes.getValue(startLayer, startNode) * weights.getWeight(startLayer, startNode, endNode);    //sum the start node value with the weight
+                    sum += nodes.getValue(startLayer, startNode) * weights.getWeightValue(startLayer, startNode, endNode);    //sum the start node value with the weight
                 }
                 nodes.setValue(endLayer, endNode, activation(sum));                                                     //set the end node to the f(sum) with f being the activation function
             }
@@ -47,8 +47,9 @@ public class Network {
         }
         double avgError = errorSum/(double)lastLayerSize;
         double errorRange = maxError - minError;
-//        return Math.pow(avgError, errorRange); //returns % error and % variation
-        return avgError;// + 0.25 * errorRange;// returns % error and % variation
+//        return Math.pow(errorRange, 1 + avgError); //returns % error and % variation
+        return Math.pow(avgError, 1 + errorRange); //returns % error and % variation
+//        return avgError;// + 0.25 * errorRange;// returns % error and % variation
     }
 
     private double activation(double x){
@@ -69,17 +70,15 @@ public class Network {
     }
     //-----------------------------------------------------
     //------------- Weight Getters -------------------------
-    public int getNumWeights(){
-        return weights.getNumWeights();
-    }
 
     public Weight[] getLinearWeights(){
         return weights.getLinearWeights();
     }
 
-    public double getWeightValue(int layer, int startNode, int endNode) {
+    public Weight getWeight(int layer, int startNode, int endNode){
         return weights.getWeight(layer, startNode, endNode);
     }
+
     //----------------------------------------------------
     //------------- Layer Getters -------------------------
     public int getNumLayers(){

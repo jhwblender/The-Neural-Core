@@ -1,8 +1,5 @@
 package network;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-
 public class WeightMaster {
 
     private final Weight[][][] weights; //weights[layerStart][startNode][endNode of nextLayer]
@@ -34,24 +31,19 @@ public class WeightMaster {
                     weights[layerStart][startNode][endNode] = weight;
                     //Add to linear weightMap
                     linearWeights[linearWeightIndex] = weight;
+                    linearWeights[linearWeightIndex].setIndex(linearWeightIndex);
                     linearWeightIndex++;
                 }
             }
         }
     }
 
-    public int getNumWeights(){
-        return linearWeights.length;
-    }
-
-    public double getWeight(int layerStart, int startNode, int endNode){
+    public double getWeightValue(int layerStart, int startNode, int endNode){
         return weights[layerStart][startNode][endNode].getWeight();
     }
-
-    public double getWeight(int num){
-        return linearWeights[num].getWeight();
+    public Weight getWeight(int layerStart, int startNode, int endNode){
+        return weights[layerStart][startNode][endNode];
     }
-
     public Weight[] getLinearWeights(){
         return linearWeights;
     }

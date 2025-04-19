@@ -5,6 +5,10 @@ public class Weight {
     double weight;
     double rangeMin;
     double rangeMax;
+    int index;
+
+    //For rendering
+    public boolean isSpecial = false;
 
     Weight(int weight){
         this.weight = weight;
@@ -21,14 +25,21 @@ public class Weight {
         this.weight = weight;
     }
 
+    public void setIndex(int index){
+        this.index = index;
+    }
+    public int getIndex(){
+        return index;
+    }
+
     public void randomize(){
         weight = ((rangeMax-rangeMin)*Math.random()+rangeMin);
     }
-    public void setRangeMin(double min){
-        rangeMin = min;
+    public void setRangeToUpper(){
+        rangeMin = (rangeMin + rangeMax)/2f;
     }
-    public void setRangeMax(double max){
-        rangeMax = max;
+    public void setRangeToLower(){
+        rangeMax = (rangeMin + rangeMax)/2f;
     }
     public void setRangeMinMax(double min, double max){
         rangeMin = min;
@@ -39,6 +50,9 @@ public class Weight {
     }
     public double getRangeMax(){
         return rangeMax;
+    }
+    public double getRange(){
+        return rangeMax - rangeMin;
     }
 
     @Override
